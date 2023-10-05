@@ -1,0 +1,11 @@
+﻿User // This is a user
+	FirstName : string
+	LastName : string
+	EmailAddress : string
+	DateOfBirth : DateTimeOffset
+	Group : Group
+	NullableNumber : int?
+
+Group
+	Name : string
+	Members : List<User>

@@ -1,0 +1,107 @@
+﻿﻿<#@ template hostspecific="true" language="C#" #>
+<#@ assembly name="System.Core" #>
+<#@ import namespace="System.IO" #>
+<#@ import namespace="System.Text" #>
+<#@ import namespace="System.Linq" #>
+<#@ import namespace="System.Text.RegularExpressions" #>
+<#@ import namespace="System.Collections.Generic" #>
+<#+
+
+// Models
+
+public class EntityDefinition
+{
+	public string Name { get; set; }
+	public string Summary { get; set; }
+	public PropertyDefinition[] Properties { get; set; }
+}
+
+public class PropertyDefinition
+{
+	public string Name { get; set; }
+	public string Type { get; set; }
+	public bool IsNullable { get; set; }
+	
+	public PropertyDefinition(string name, string type, bool isNullable)
+	{
+		Name = name.Trim();
+		Type = type.Trim();
+		IsNullable = isNullable;
+	}
+}
+
+// Methods
+
+string newLineRegEx = @"^\w+";
+string commentRegEx = @"//.+";
+string propertyRegex = @"^\s+(?<name>[^:]+)(?<center>[\s]?:[\s]?)(?<type>[^\?\s\?]+)(?<nullable>[$\?])?";
+
+public List<EntityDefinition> GenerateEntities(string[] lines)
+{
+	List<EntityDefinition> result = new List<EntityDefinition>();
+	var lineNumber = -1;
+
+	foreach(var line in lines)
+	{
+		lineNumber++;
+		if (String.IsNullOrEmpty(line)) continue;
+		
+		var matchEntity = Regex.Match(line, newLineRegEx);
+
+		if(matchEntity.Success)
+		{
+			var matchSummary = Regex.Match(line, commentRegEx);
+			
+			var entity = new EntityDefinition
+			{
+				Summary = matchSummary.Success ? matchSummary.Value : string.Empty,
+				Name = Regex.Replace(line, commentRegEx, ""),
+				Properties = GetProperties(lineNumber, lines)
+			};
+
+			result.Add(entity);
+		}
+	}
+	return result;
+}
+
+public PropertyDefinition[] GetProperties(int lineNumber, string[] lines)
+{
+	List<PropertyDefinition> properties = new List<PropertyDefinition>();
+
+	for (var i = lineNumber + 1; i < lines.Length; i++)
+	{
+		var matchProperties = Regex.Match(lines[i], propertyRegex);
+
+		if (matchProperties.Success)
+		{
+				properties.Add(new PropertyDefinition(matchProperties.Groups["name"].Value, matchProperties.Groups["type"].Value, string.IsNullOrEmpty(matchProperties.Groups["nullable"].Value) ? false : true));
+		}
+		else
+		{
+			break;
+		}
+	}
+	return properties.ToArray();
+}
+
+// Helper methods
+
+public string[] ReadDefFile(string path)
+{
+	return File.ReadAllLines(path);
+}
+
+public void SaveFile(string folder, string fileName, string content)
+{
+	using (FileStream fs = new FileStream(Path.Combine(folder, fileName.Trim() + ".cs"), FileMode.Create))
+    {
+        using (StreamWriter str = new StreamWriter(fs))
+        {
+            str.WriteLine(content);
+            str.Flush();
+        }
+    }
+}
+
+#>

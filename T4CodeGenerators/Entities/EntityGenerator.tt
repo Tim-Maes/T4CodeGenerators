@@ -1,0 +1,59 @@
+﻿<#@ include file="helper.ttinclude" #><##>
+<#
+string defFileName = "EntityDefinitions.def";
+string ttFilePath = Host.TemplateFile;
+string ttDirectory = Path.GetDirectoryName(ttFilePath);
+string defFilePath = Path.Combine(ttDirectory, defFileName); 
+var definitionLines = ReadDefFile(defFilePath);
+
+var savePath = Path.Combine(ttDirectory, "Generated");
+
+List<EntityDefinition> entities = GenerateEntities(definitionLines); 
+
+if(entities != null)
+{
+	foreach (var entity in entities)
+	{
+#>
+// This file is auto generated. Changes to this file will be lost!
+using System;
+using System.Collections.Generic;
+	
+namespace T4CodeGenerators.Entities.Generated;
+
+<#
+	if (!string.IsNullOrEmpty(entity.Summary))
+	{
+#>
+/// <summary>
+/// <#= Regex.Replace(entity.Summary, "// ", "") #>
+/// </summary>
+<#
+	}
+#>
+public class <#= entity.Name.Trim() #>
+{
+<#
+	foreach (var property in entity.Properties)
+	{
+		if (property.IsNullable)
+		{
+#>		
+	public <#= property.Type #>? <#= property.Name #> { get; set; }
+<#
+	}
+		else
+		{
+#>		
+	public <#= property.Type #> <#= property.Name #> { get; set; }
+<#
+		}
+	}
+#>
+}
+<#
+	SaveFile(savePath, entity.Name, this.GenerationEnvironment.ToString());
+	this.GenerationEnvironment.Remove(0, this.GenerationEnvironment.Length);
+	}
+}
+#>
